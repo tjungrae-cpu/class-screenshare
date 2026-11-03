@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>교실 화면 공유</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+  .wrap { max-width: 520px; width: 100%; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  .btns { display: grid; gap: 12px; margin-top: 22px; }
+  .btns a { display: block; text-decoration: none; color: inherit; }
+  .btns .card { padding: 20px; transition: border-color .15s; }
+  .btns a:hover .card { border-color: var(--brand); }
+  .btns b { font-size: 20px; display: block; }
+  ul { padding-left: 18px; line-height: 1.8; font-size: 14px; color: var(--sub); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>교실 화면 공유</h1>
+  <div class="muted">학생들 화면을 선생님 PC에서 한눈에. 설치·회원가입 없이 주소 하나로.</div>
+  <div class="btns">
+    <a href="teacher.html"><div class="card"><b>교사용</b><span class="muted">교실 코드 발급 + 학생 화면 받기</span></div></a>
+    <a href="student.html"><div class="card"><b>학생용</b><span class="muted">교실 코드 입력 + 내 화면 공유</span></div></a>
+  </div>
+  <ul>
+    <li>크롬북, 윈도우·맥 PC: 크롬 브라우저로 바로 돼요.</li>
+    <li>갤럭시탭: 전용 앱(APK)을 설치해야 해요. <a href="https://github.com/tjungrae-cpu/class-screenshare/releases/latest/download/hatban-screenshare.apk">앱 받기</a></li>
+    <li>화면은 선생님 PC로 바로 전달될 뿐, 녹화하거나 서버에 저장하지 않아요.</li>
+  </ul>
+</div>
+</body>
+</html>

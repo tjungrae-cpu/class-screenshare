@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>교실 화면 공유 · 학생용</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 16px; }
+  .wrap { width: 100%; max-width: 440px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  label.row { display: flex; flex-direction: column; gap: 6px; font-size: 15px; margin-top: 14px; font-weight: 600; }
+  #codeIn { font-size: 26px; letter-spacing: 6px; text-align: center; font-weight: 800; }
+  .big-btn { width: 100%; padding: 16px; font-size: 18px; margin-top: 18px; }
+  .chk { display: flex; gap: 8px; align-items: center; margin-top: 14px; font-size: 14px; color: var(--sub); }
+  .notice { margin-top: 16px; padding: 14px; border-radius: 12px; background: #fff4e5; border: 1px solid #f3d3a5; font-size: 14px; line-height: 1.6; }
+  .notice b { color: var(--brand); }
+  .err { color: var(--warn); margin-top: 12px; font-size: 14px; min-height: 1em; }
+  #live { text-align: center; }
+  #live .dot { width: 18px; height: 18px; background: var(--warn); border-radius: 50%; display: inline-block; margin-right: 8px; animation: blink 1.4s infinite; vertical-align: -2px; }
+  #live .t1 { font-size: 30px; font-weight: 800; margin: 8px 0; }
+  #live .t2 { font-size: 20px; color: var(--sub); }
+  @keyframes blink { 50% { opacity: .25; } }
+  .banner {
+    position: fixed; left: 12px; right: 12px; top: 12px; z-index: 60;
+    background: #23201b; color: #fff; border-radius: 14px; padding: 14px 16px;
+    display: flex; gap: 12px; align-items: center; box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  }
+  .banner .txt { flex: 1; min-width: 0; }
+  .banner .txt small { display: block; color: #bdb6a8; word-break: break-all; }
+  #castView { position: fixed; inset: 0; background: #000; z-index: 55; display: flex; flex-direction: column; }
+  #castView video { flex: 1; width: 100%; min-height: 0; object-fit: contain; }
+  #castView .bar { color: #fff; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 입장 화면 -->
+  <div class="card" id="joinCard">
+    <h1>교실 화면 공유</h1>
+    <div class="muted">선생님이 알려 준 교실 코드와 내 이름을 넣어요.</div>
+    <label class="row">교실 코드<input id="codeIn" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+    <label class="row">이름<input id="nameIn" maxlength="20" autocomplete="off"></label>
+    <label class="chk"><input type="checkbox" id="saveChk"> 이 기기에 코드/이름 저장</label>
+    <button class="primary big-btn" id="btnJoin">입장 및 공유 시작</button>
+    <div class="err" id="err"></div>
+
+    <div class="notice hidden" id="androidNotice">
+      <b>갤럭시탭(안드로이드)</b>은 브라우저로 화면 공유가 안 돼요.<br>
+      전용 앱으로 열어 주세요.
+      <button class="primary big-btn" id="btnOpenApp" style="margin-top:10px">앱으로 열기</button>
+      <div style="margin-top:8px">앱이 없으면 <a id="apkLink" href="#">여기서 앱 받기(APK)</a> 또는 선생님께 설치를 부탁해요.</div>
+    </div>
+    <div class="notice hidden" id="inappNotice">
+      카카오톡·문자·QR 앱 안에서는 화면 공유가 안 돼요.<br><b>크롬 앱</b>에서 이 주소를 직접 열어 주세요.
+    </div>
+    <div class="notice hidden" id="iosNotice">아이패드·아이폰은 지원하지 않아요.</div>
+    <p class="muted" style="font-size:12px;margin-top:16px">이름은 수업 중에만 쓰이고 저장되지 않아요. 화면은 녹화하지 않아요.</p>
+  </div>
+
+  <!-- 공유 중 화면 -->
+  <div class="card hidden" id="live">
+    <div><span class="dot"></span><span class="muted" id="liveName"></span></div>
+    <div class="t1" id="liveT1">내 화면 공유 중</div>
+    <div class="t2" id="liveT2">선생님이 보고 있습니다</div>
+    <div class="err" id="liveErr"></div>
+    <button class="primary big-btn hidden" id="btnNewTab">활동할 새 탭 열기</button>
+    <button class="big-btn hidden" id="btnReshare">다시 공유하기</button>
+    <p class="muted" style="font-size:13px" id="liveHelp">이 탭은 닫지 말고, 다른 탭에서 활동하세요.</p>
+    <button id="btnStop" style="margin-top:8px">공유 끝내기</button>
+  </div>
+</div>
+
+<div class="banner hidden" id="linkBanner">
+  <div class="txt"><b id="linkNote">선생님이 링크를 보냈어요</b><small id="linkUrl"></small></div>
+  <button class="primary" id="linkOpen">열기</button>
+  <button id="linkClose">✕</button>
+</div>
+
+<div id="castView" class="hidden">
+  <div class="bar"><span>● 선생님 화면</span><button id="castHide">작게 하기</button></div>
+  <video id="castVideo" playsinline autoplay></video>
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="common.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
+  const App = window.HatbanApp || null;          // 갤럭시탭 전용 앱 안에서 열렸을 때
+  const ua = navigator.userAgent;
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isInApp = /KAKAOTALK|NAVER|Line\/|Instagram|FBAN|FBAV|DaumApps|SamsungBrowser\/.*CrossApp/i.test(ua);
+
+  let peer = null, conn = null, call = null, stream = null;
+  let code = '', name = '', ended = false, retryTimer = null, linkUrl = '';
+  let castCall = null;
+
+  // ---------- 초기값 ----------
+  $('codeIn').value = qs.get('code') || HB.store.get('hb_s_code', '');
+  $('nameIn').value = qs.get('name') || HB.store.get('hb_s_name', '');
+  $('saveChk').checked = HB.store.get('hb_s_save') === '1';
+  $('apkLink').href = HB.APK_URL;
+
+  if (!App) {
+    if (isIOS) $('iosNotice').classList.remove('hidden');
+    else if (isInApp) $('inappNotice').classList.remove('hidden');
+    else if (isAndroid) { $('androidNotice').classList.remove('hidden'); $('btnJoin').classList.add('hidden'); }
+  }
+
+  function openApp() {
+    const p = new URLSearchParams({ code: $('codeIn').value.trim(), name: $('nameIn').value.trim() });
+    location.href = `intent://open?${p}#Intent;scheme=hatbanshare;package=${HB.APP_PACKAGE};S.browser_fallback_url=${encodeURIComponent(HB.APK_URL)};end`;
+  }
+  $('btnOpenApp').onclick = openApp;
+
+  function setErr(t) { $('err').textContent = t || ''; }
+  function setLiveErr(t) { $('liveErr').textContent = t || ''; }
+
+  // ---------- 입장 ----------
+  $('btnJoin').onclick = async () => {
+    code = $('codeIn').value.replace(/\D/g, '');
+    name = $('nameIn').value.trim();
+    if (code.length !== 6) return setErr('교실 코드 6자리를 넣어 주세요.');
+    if (!name) return setErr('이름을 넣어 주세요.');
+    setErr('');
+    if ($('saveChk').checked) { HB.store.set('hb_s_code', code); HB.store.set('hb_s_name', name); HB.store.set('hb_s_save', '1'); }
+    else { HB.store.del('hb_s_code'); HB.store.del('hb_s_name'); HB.store.del('hb_s_save'); }
+
+    if (App) {
+      App.startCapture();          // 결과는 window.__hbCapture 로 돌아옴
+      return;
+    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      return setErr(isAndroid ? '갤럭시탭은 전용 앱으로 열어 주세요.' : '이 브라우저는 화면 공유를 지원하지 않아요. 크롬에서 열어 주세요.');
+    }
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10, width: { max: 1920 } }, audio: true });
+    } catch (e) {
+      return setErr('화면 공유를 허용해야 시작할 수 있어요. 다시 눌러 주세요.');
+    }
+    watchStream();
+    goLive();
+  };
+
+  function watchStream() {
+    stream.getVideoTracks()[0].addEventListener('ended', () => {
+      if (ended) return;
+      stream = null;
+      try { call && call.close(); } catch (e) {}
+      call = null;
+      send({ t: 'sharing', on: false });
+      $('liveT1').textContent = '화면 공유가 멈췄어요';
+      $('liveT2').textContent = '아래 버튼을 눌러 다시 공유해 주세요';
+      $('btnReshare').classList.remove('hidden');
+      $('btnNewTab').classList.add('hidden');
+    });
+  }
+
+  $('btnReshare').onclick = async () => {
+    try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 }, audio: true }); }
+    catch (e) { return; }
+    watchStream();
+    $('btnReshare').classList.add('hidden');
+    $('liveT1').textContent = '내 화면 공유 중';
+    $('liveT2').textContent = '선생님이 보고 있습니다';
+    if (!App) $('btnNewTab').classList.remove('hidden');
+    sendStream();
+  };
+
+  // 앱(갤럭시탭)에서 캡처 허용 결과
+  window.__hbCapture = ok => {
+    if (!ok) { setErr('화면 공유를 허용해야 시작할 수 있어요. 다시 눌러 주세요.'); return; }
+    goLive();
+  };
+  // 앱에서 1초마다 호출: 최신 화면을 보냄
+  window.__hbTick = () => {
+    if (!App || ended) return;
+    const f = App.getFrame();
+    if (f && conn && conn.open) conn.send({ t: 'frame', data: f });
+  };
+  // 앱에서 사용자가 알림으로 공유를 멈췄을 때
+  window.__hbCaptureStopped = () => { if (!ended) { send({ t: 'sharing', on: false }); stopAll('화면 공유를 멈췄어요'); } };
+
+  function goLive() {
+    ended = false;
+    $('joinCard').classList.add('hidden');
+    $('live').classList.remove('hidden');
+    $('liveName').textContent = name;
+    $('liveT1').textContent = '내 화면 공유 중';
+    $('liveT2').textContent = '선생님이 보고 있습니다';
+    if (App) {
+      $('liveHelp').textContent = '이제 홈 버튼을 눌러 다른 앱에서 활동해도 돼요. 이 앱을 완전히 끄지는 마세요.';
+    } else {
+      $('btnNewTab').classList.remove('hidden');
+    }
+    connect();
+  }
+
+  // ---------- 연결 ----------
+  function connect() {
+    clearTimeout(retryTimer);
+    if (ended) return;
+    if (!peer || peer.destroyed) {
+      peer = new Peer(HB.peerOptions());
+      peer.on('open', openConn);
+      peer.on('call', onIncomingCall);
+      peer.on('disconnected', () => { if (!ended) setTimeout(() => peer && !peer.destroyed && peer.reconnect(), 2000); });
+      peer.on('error', err => {
+        console.warn('peer error', err.type);
+        if (err.type === 'peer-unavailable') setLiveErr('선생님 화면을 찾는 중이에요… (코드가 맞는지 확인해 주세요)');
+        else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') setLiveErr('인터넷 연결을 확인하는 중이에요…');
+        scheduleRetry();
+      });
+    } else if (peer.open) openConn();
+  }
+  function scheduleRetry() {
+    if (ended) return;
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => { if (!conn || !conn.open) openConn(); }, 4000);
+  }
+  function openConn() {
+    if (ended || !peer || !peer.open) return;
+    try { conn && conn.close(); } catch (e) {}
+    conn = peer.connect(HB.teacherId(code), { metadata: { name, kind: App ? 'app' : 'web' }, reliable: true });
+    conn.on('open', () => { setLiveErr(''); sendStream(); });
+    conn.on('data', onData);
+    conn.on('close', () => { if (!ended) { setLiveErr('선생님과 연결이 끊겼어요. 다시 연결하는 중…'); scheduleRetry(); } });
+    conn.on('error', () => scheduleRetry());
+  }
+  function sendStream() {
+    if (App || !stream || !peer || !peer.open) return;
+    try { call && call.close(); } catch (e) {}
+    call = peer.call(HB.teacherId(code), stream, { metadata: { name } });
+  }
+  function send(m) { try { if (conn && conn.open) conn.send(m); } catch (e) {} }
+
+  function onData(msg) {
+    if (!msg) return;
+    if (msg.t === 'end') stopAll('선생님이 화면 공유를 끝냈어요');
+    else if (msg.t === 'link') showLink(msg.url, msg.note);
+    else if (msg.t === 'cast' && !msg.on) hideCast(true);
+  }
+
+  // ---------- 선생님 화면 받기 ----------
+  function onIncomingCall(c) {
+    if (!c.metadata || c.metadata.type !== 'cast') { c.close(); return; }
+    try { castCall && castCall.close(); } catch (e) {}
+    castCall = c;
+    c.answer();
+    c.on('stream', s => {
+      $('castVideo').srcObject = s;
+      $('castView').classList.remove('hidden');
+      $('castVideo').play().catch(() => { $('castVideo').muted = true; $('castVideo').play().catch(() => {}); });
+    });
+    c.on('close', () => hideCast(true));
+  }
+  function hideCast(stop) {
+    $('castView').classList.add('hidden');
+    if (stop) { $('castVideo').srcObject = null; castCall = null; }
+  }
+  $('castHide').onclick = () => hideCast(false);
+
+  // ---------- 링크 배너 ----------
+  function showLink(url, note) {
+    if (!/^https?:\/\//i.test(url)) return;
+    linkUrl = url;
+    $('linkNote').textContent = note || '선생님이 링크를 보냈어요';
+    $('linkUrl').textContent = url;
+    $('linkBanner').classList.remove('hidden');
+    if (App && App.notify) App.notify(note || '선생님이 링크를 보냈어요');
+  }
+  $('linkOpen').onclick = () => {
+    if (App && App.openUrl) App.openUrl(linkUrl); else window.open(linkUrl, '_blank');
+    $('linkBanner').classList.add('hidden');
+  };
+  $('linkClose').onclick = () => $('linkBanner').classList.add('hidden');
+
+  $('btnNewTab').onclick = () => window.open('https://www.google.com', '_blank');
+
+  // ---------- 종료 ----------
+  function stopAll(msg) {
+    ended = true;
+    clearTimeout(retryTimer);
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    stream = null;
+    if (App) App.stopCapture();
+    try { call && call.close(); } catch (e) {}
+    try { conn && conn.close(); } catch (e) {}
+    try { peer && peer.destroy(); } catch (e) {}
+    peer = conn = call = null;
+    hideCast(true);
+    $('liveT1').textContent = msg;
+    $('liveT2').textContent = '수고했어요!';
+    setLiveErr('');
+    $('btnNewTab').classList.add('hidden');
+    $('btnReshare').classList.add('hidden');
+    $('btnStop').textContent = '처음 화면으로';
+    $('liveHelp').textContent = '';
+  }
+  $('btnStop').onclick = () => {
+    if (!ended) { if (!confirm('화면 공유를 끝낼까요?')) return; send({ t: 'sharing', on: false }); stopAll('화면 공유를 끝냈어요'); return; }
+    location.href = location.pathname + (qs.get('peerhost') ? '?peerhost=' + qs.get('peerhost') : '') + (App ? (qs.get('peerhost') ? '&' : '?') + 'app=1' : '');
+  };
+  window.addEventListener('beforeunload', e => { if (!ended && conn) { e.preventDefault(); e.returnValue = ''; } });
+
+  // 앱에서 코드/이름을 넘겨 열었으면 바로 입력 상태로
+  if (App && qs.get('code') && qs.get('name')) $('btnJoin').focus();
+})();
+</script>
+</body>
+</html>

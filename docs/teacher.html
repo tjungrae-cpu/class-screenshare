@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>교실 화면 공유 · 교사용</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  header {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .code-box { display: flex; align-items: baseline; gap: 8px; margin-right: 8px; }
+  .code-box .lbl { font-size: 13px; color: var(--sub); }
+  .code-box .code { font-size: 34px; font-weight: 800; letter-spacing: 4px; color: var(--brand); font-variant-numeric: tabular-nums; }
+  .stat { font-size: 14px; color: var(--sub); margin-right: auto; }
+  .stat b { color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; border-right: 1px solid var(--line); }
+  .seg button:last-child { border-right: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 16px; border-bottom: 1px solid var(--line); background: #fbfaf7; font-size: 14px; }
+  .toolbar select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+  .toolbar .sp { flex: 1; }
+  main { flex: 1; position: relative; padding: 12px; overflow: hidden; }
+  .grid { display: grid; gap: 10px; height: 100%; }
+  .grid.v25 { grid-template-columns: repeat(5, 1fr); grid-auto-rows: calc((100% - 40px) / 5); overflow-y: auto; }
+  .grid.v4 { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); }
+  .grid.v1 { grid-template-columns: 1fr; grid-template-rows: 1fr; }
+  .tile {
+    position: relative; background: var(--tile); border-radius: 12px; overflow: hidden;
+    cursor: pointer; min-height: 0; border: 2px solid transparent;
+  }
+  .tile.starred { border-color: #f1c40f; }
+  .tile video, .tile img { width: 100%; height: 100%; object-fit: contain; display: block; background: var(--tile); }
+  .tile .name {
+    position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.62); color: #fff;
+    padding: 3px 10px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  }
+  .grid.v1 .tile .name { font-size: 22px; padding: 6px 16px; }
+  .tile .star {
+    position: absolute; right: 6px; top: 6px; background: rgba(0,0,0,.5); color: #fff;
+    border: 0; border-radius: 999px; width: 32px; height: 32px; padding: 0; font-size: 17px;
+  }
+  .tile.starred .star { color: #f1c40f; }
+  .tile .badge {
+    position: absolute; left: 8px; top: 8px; font-size: 11px; color: #fff; background: rgba(0,0,0,.5);
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .tile .idle {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #bdb6a8; font-size: 14px; text-align: center; padding: 10px;
+  }
+  .empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--sub); text-align: center; gap: 8px; }
+  .empty .big { font-size: 22px; color: var(--ink); font-weight: 700; }
+  .nav { position: absolute; top: 50%; transform: translateY(-50%); z-index: 5; font-size: 22px; width: 44px; height: 64px; padding: 0; opacity: .85; }
+  .nav.prev { left: 4px; } .nav.next { right: 4px; }
+  .pager { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.6); color: #fff; padding: 4px 12px; border-radius: 999px; font-size: 13px; z-index: 5; }
+  #startOverlay .card { text-align: center; }
+  #startOverlay .card h1 { margin: 0 0 8px; font-size: 24px; }
+  .menu { position: absolute; right: 16px; top: 64px; z-index: 30; width: 280px; }
+  .menu .card { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .castbar { background: var(--warn); color: #fff; padding: 6px 16px; font-size: 14px; display: flex; gap: 10px; align-items: center; }
+  .castbar button { padding: 4px 10px; }
+  label.row { display: flex; flex-direction: column; gap: 6px; font-size: 14px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="code-box"><span class="lbl">교실 코드</span><span class="code" id="code">------</span></div>
+  <div class="stat">접속 <b id="nJoined">0</b>명 · 공유 중 <b id="nSharing">0</b>명 <span id="netState" class="muted"></span></div>
+  <div class="seg" id="viewSeg">
+    <button data-v="25" class="on">25분할</button>
+    <button data-v="4">4분할 ★</button>
+    <button data-v="1">1명 크게</button>
+  </div>
+  <button id="btnCast">내 화면 송출</button>
+  <button id="btnLink">링크 보내기</button>
+  <button id="btnEndAll" class="danger">전체 종료</button>
+  <button id="btnMenu" title="설정">⚙</button>
+</header>
+<div class="castbar hidden" id="castBar">● 학생들에게 선생님 화면을 송출하고 있어요 <button id="btnCastStop">송출 끄기</button></div>
+
+<div class="toolbar">
+  <span>정렬</span>
+  <select id="sortSel"><option value="name">이름순</option><option value="join">들어온 순</option></select>
+  <span class="sp"></span>
+  <label><input type="checkbox" id="autoChk"> 자동 넘김</label>
+  <select id="autoOrder"><option value="seq">순서대로</option><option value="rand">랜덤</option></select>
+  <select id="autoSec"><option>3</option><option selected>5</option><option>10</option><option>15</option></select><span>초</span>
+</div>
+
+<main>
+  <div id="grid" class="grid v25"></div>
+  <button class="nav prev hidden" id="navPrev">◀</button>
+  <button class="nav next hidden" id="navNext">▶</button>
+  <div class="pager hidden" id="pager"></div>
+</main>
+
+<div class="menu hidden" id="menu"><div class="card">
+  <b>설정</b>
+  <div class="muted" style="font-size:13px">학생 접속 주소<br><span id="studentUrl" style="word-break:break-all;color:var(--ink)"></span></div>
+  <button id="btnCopyUrl">학생 주소 복사</button>
+  <button id="btnNewCode">새 코드 받기</button>
+  <div class="muted" style="font-size:12px">새 코드를 받으면 학생들에게 다시 알려 줘야 해요.</div>
+</div></div>
+
+<div class="overlay" id="startOverlay"><div class="card">
+  <h1>교실 화면 공유</h1>
+  <p class="muted">아래 버튼을 누르면 교실 코드가 만들어지고<br>학생 화면을 받을 준비를 해요.</p>
+  <button class="primary" id="btnStart" style="width:100%;padding:14px;font-size:18px">클릭해서 수신 시작</button>
+  <p class="muted" id="startErr" style="color:var(--warn)"></p>
+</div></div>
+
+<div class="overlay hidden" id="linkOverlay"><div class="card">
+  <h3 style="margin-top:0">학생들에게 링크 보내기</h3>
+  <label class="row">주소<input id="linkUrl" type="url" placeholder="https://"></label>
+  <label class="row">설명 (선택)<input id="linkNote" type="text" placeholder="예: 3번 문제까지 풀어 보세요"></label>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button id="linkCancel">취소</button><button class="primary" id="linkSend">보내기</button>
+  </div>
+</div></div>
+
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+<script src="common.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const students = new Map();   // peerId -> student
+  let peer = null, code = null;
+  let view = '25', page = 0, autoTimer = null;
+  let castStream = null; const castCalls = new Map();
+  const starredNames = new Set(JSON.parse(HB.store.get('hb_starred', '[]')));
+
+  // ---------- 코드 ----------
+  function makeCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
+  function getCode() {
+    let c = HB.store.get('hb_code');
+    if (!c) { c = makeCode(); HB.store.set('hb_code', c); }
+    return c;
+  }
+  function studentLink() {
+    const u = new URL('student.html', location.href);
+    u.search = '';
+    const ph = new URLSearchParams(location.search).get('peerhost');
+    if (ph) u.searchParams.set('peerhost', ph);
+    return u.toString();
+  }
+
+  // ---------- Peer ----------
+  function startPeer() {
+    code = getCode();
+    $('code').textContent = code;
+    $('studentUrl').textContent = studentLink();
+    if (peer) { try { peer.destroy(); } catch (e) {} }
+    peer = new Peer(HB.teacherId(code), HB.peerOptions());
+    peer.on('open', () => { setNet(''); $('startOverlay').classList.add('hidden'); });
+    peer.on('connection', onConnection);
+    peer.on('call', onCall);
+    peer.on('disconnected', () => { setNet('(서버 재연결 중…)'); setTimeout(() => { if (peer && !peer.destroyed) peer.reconnect(); }, 2000); });
+    peer.on('error', err => {
+      console.warn('peer error', err.type, err);
+      if (err.type === 'unavailable-id') {
+        $('startOverlay').classList.remove('hidden');
+        $('startErr').textContent = '이 코드가 이미 다른 창에서 열려 있어요. 다른 교사용 창을 닫고 다시 눌러 주세요.';
+      } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+        setNet('(인터넷 연결을 확인해 주세요)');
+      }
+    });
+  }
+  function setNet(t) { $('netState').textContent = t; }
+
+  function onConnection(conn) {
+    conn.on('open', () => {
+      const meta = conn.metadata || {};
+      const name = String(meta.name || '이름 없음').slice(0, 20);
+      // 같은 이름의 끊어진 이전 접속 정리
+      for (const s of students.values()) if (s.name === name && s.id !== conn.peer) removeStudent(s.id);
+      const s = students.get(conn.peer) || createStudent(conn.peer, name, meta.kind || 'web');
+      s.conn = conn;
+      if (castStream) castTo(s);
+      update();
+    });
+    conn.on('data', msg => {
+      const s = students.get(conn.peer); if (!s || !msg) return;
+      if (msg.t === 'frame' && typeof msg.data === 'string') {
+        s.img.src = msg.data; s.lastFrame = Date.now();
+        if (!s.sharing) { s.sharing = true; showMedia(s, 'img'); update(); }
+      } else if (msg.t === 'sharing') {
+        s.sharing = !!msg.on;
+        if (!msg.on) showMedia(s, null);
+        update();
+      }
+    });
+    conn.on('close', () => removeStudent(conn.peer));
+    conn.on('error', () => removeStudent(conn.peer));
+  }
+
+  function onCall(call) {
+    const meta = call.metadata || {};
+    call.answer();
+    call.on('stream', stream => {
+      let s = students.get(call.peer);
+      if (!s) s = createStudent(call.peer, String(meta.name || '이름 없음').slice(0, 20), 'web');
+      s.call = call;
+      s.video.srcObject = stream;
+      s.video.play().catch(() => {});
+      s.sharing = true; showMedia(s, 'video');
+      stream.getVideoTracks().forEach(t => t.addEventListener('ended', () => { s.sharing = false; showMedia(s, null); update(); }));
+      update();
+    });
+    call.on('close', () => { const s = students.get(call.peer); if (s && s.call === call) { s.sharing = false; showMedia(s, null); update(); } });
+  }
+
+  // ---------- 학생 타일 ----------
+  function createStudent(id, name, kind) {
+    const el = document.createElement('div');
+    el.className = 'tile';
+    el.innerHTML = `<div class="idle">화면 공유를<br>기다리는 중</div><video muted playsinline autoplay class="hidden"></video><img class="hidden" alt=""><span class="badge">${kind === 'app' ? '태블릿' : '크롬'}</span><span class="name">${HB.esc(name)}</span><button class="star" title="별표">★</button>`;
+    const s = { id, name, kind, el, joinedAt: Date.now(), sharing: false, lastFrame: 0,
+      video: el.querySelector('video'), img: el.querySelector('img'), idle: el.querySelector('.idle'), conn: null, call: null };
+    el.querySelector('.star').addEventListener('click', e => { e.stopPropagation(); toggleStar(s); });
+    el.addEventListener('click', () => openSingle(s));
+    if (starredNames.has(name)) el.classList.add('starred');
+    students.set(id, s);
+    return s;
+  }
+  function showMedia(s, which) {
+    s.video.classList.toggle('hidden', which !== 'video');
+    s.img.classList.toggle('hidden', which !== 'img');
+    s.idle.classList.toggle('hidden', !!which);
+    s.idle.innerHTML = which ? '' : '화면 공유를<br>기다리는 중';
+  }
+  function removeStudent(id) {
+    const s = students.get(id); if (!s) return;
+    try { s.call && s.call.close(); } catch (e) {}
+    try { s.conn && s.conn.close(); } catch (e) {}
+    const cc = castCalls.get(id); if (cc) { try { cc.close(); } catch (e) {} castCalls.delete(id); }
+    s.el.remove();
+    students.delete(id);
+    update();
+  }
+  function toggleStar(s) {
+    if (starredNames.has(s.name)) starredNames.delete(s.name); else starredNames.add(s.name);
+    HB.store.set('hb_starred', JSON.stringify([...starredNames]));
+    s.el.classList.toggle('starred', starredNames.has(s.name));
+    if (view === '4') render();
+  }
+
+  // 태블릿 화면이 오래 안 오면 표시
+  setInterval(() => {
+    for (const s of students.values()) {
+      if (s.kind === 'app' && s.sharing && Date.now() - s.lastFrame > 8000) {
+        s.idle.classList.remove('hidden');
+        s.idle.innerHTML = '화면이 잠시 멈췄어요';
+      } else if (s.kind === 'app' && s.sharing) {
+        s.idle.classList.add('hidden');
+      }
+    }
+  }, 2000);
+
+  // ---------- 보기 ----------
+  function sorted() {
+    const arr = [...students.values()];
+    if ($('sortSel').value === 'name') arr.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    else arr.sort((a, b) => a.joinedAt - b.joinedAt);
+    return arr;
+  }
+  function pool() {
+    const arr = sorted();
+    if (view === '4') {
+      const st = arr.filter(s => starredNames.has(s.name));
+      return st.length ? st : arr;
+    }
+    return arr;
+  }
+  function perPage() { return view === '25' ? 25 : view === '4' ? 4 : 1; }
+  function pageCount() { return Math.max(1, Math.ceil(pool().length / perPage())); }
+
+  function render() {
+    const grid = $('grid');
+    grid.className = 'grid v' + view;
+    const list = pool();
+    const pp = perPage();
+    const pc = pageCount();
+    if (page >= pc) page = pc - 1;
+    if (page < 0) page = 0;
+    // 모든 타일을 일단 떼어 낸 뒤 현재 페이지만 붙인다
+    for (const s of students.values()) if (s.el.parentNode) s.el.remove();
+    grid.querySelectorAll('.empty').forEach(e => e.remove());
+    const shown = view === '25' ? list : list.slice(page * pp, page * pp + pp);
+    if (!list.length) {
+      grid.insertAdjacentHTML('beforeend', `<div class="empty" style="grid-column:1/-1;grid-row:1/-1"><div class="big">학생을 기다리고 있어요</div><div>학생들에게 교실 코드 <b style="color:var(--brand);font-size:20px">${code || ''}</b> 를 알려 주세요.</div></div>`);
+    }
+    shown.forEach(s => grid.appendChild(s.el));
+    shown.forEach(s => { if (!s.video.classList.contains('hidden')) s.video.play().catch(() => {}); });
+    const showNav = view !== '25' && pc > 1;
+    $('navPrev').classList.toggle('hidden', !showNav);
+    $('navNext').classList.toggle('hidden', !showNav);
+    $('pager').classList.toggle('hidden', !showNav);
+    $('pager').textContent = `${page + 1} / ${pc}`;
+    // 1명 크게 보기에서는 소리 켜기 (크롬 탭 오디오 공유 시)
+    for (const s of students.values()) s.video.muted = !(view === '1' && shown.includes(s));
+  }
+  function update() {
+    $('nJoined').textContent = students.size;
+    $('nSharing').textContent = [...students.values()].filter(s => s.sharing).length;
+    render();
+  }
+  function setView(v) {
+    view = v; page = 0;
+    document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    render(); restartAuto();
+  }
+  function openSingle(s) {
+    if (view === '1') { setView('25'); return; }
+    view = '1';
+    document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === '1'));
+    page = Math.max(0, pool().indexOf(s));
+    render(); restartAuto();
+  }
+  function move(d) {
+    const pc = pageCount();
+    page = (page + d + pc) % pc;
+    render();
+  }
+
+  // ---------- 자동 넘김 ----------
+  function restartAuto() {
+    clearInterval(autoTimer); autoTimer = null;
+    if (!$('autoChk').checked || view === '25') return;
+    autoTimer = setInterval(() => {
+      const pc = pageCount();
+      if (pc <= 1) return;
+      if ($('autoOrder').value === 'rand') {
+        let n; do { n = Math.floor(Math.random() * pc); } while (n === page);
+        page = n; render();
+      } else move(1);
+    }, Number($('autoSec').value) * 1000);
+  }
+
+  // ---------- 보내기 ----------
+  function broadcast(msg) { for (const s of students.values()) if (s.conn && s.conn.open) s.conn.send(msg); }
+
+  async function startCast() {
+    try {
+      castStream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: true });
+    } catch (e) { castStream = null; return; }
+    castStream.getVideoTracks()[0].addEventListener('ended', stopCast);
+    for (const s of students.values()) castTo(s);
+    $('castBar').classList.remove('hidden');
+    $('btnCast').classList.add('on');
+  }
+  function castTo(s) {
+    if (!castStream || !s.conn) return;
+    try {
+      const c = peer.call(s.id, castStream, { metadata: { type: 'cast' } });
+      castCalls.set(s.id, c);
+    } catch (e) { console.warn(e); }
+  }
+  function stopCast() {
+    if (castStream) castStream.getTracks().forEach(t => t.stop());
+    castStream = null;
+    for (const c of castCalls.values()) { try { c.close(); } catch (e) {} }
+    castCalls.clear();
+    broadcast({ t: 'cast', on: false });
+    $('castBar').classList.add('hidden');
+    $('btnCast').classList.remove('on');
+  }
+
+  // ---------- 이벤트 ----------
+  $('btnStart').onclick = () => { $('startErr').textContent = ''; startPeer(); };
+  document.querySelectorAll('#viewSeg button').forEach(b => b.onclick = () => setView(b.dataset.v));
+  $('sortSel').value = HB.store.get('hb_sort', 'name');
+  $('sortSel').onchange = () => { HB.store.set('hb_sort', $('sortSel').value); render(); };
+  ['autoChk', 'autoOrder', 'autoSec'].forEach(id => $(id).onchange = restartAuto);
+  $('navPrev').onclick = () => move(-1);
+  $('navNext').onclick = () => move(1);
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'ArrowRight') move(1);
+    else if (e.key === 'ArrowLeft') move(-1);
+    else if (e.key === 'Escape') setView('25');
+  });
+  $('btnEndAll').onclick = () => {
+    if (!students.size) return;
+    if (!confirm('모든 학생의 화면 공유를 끝낼까요?')) return;
+    broadcast({ t: 'end' });
+    setTimeout(() => { for (const id of [...students.keys()]) removeStudent(id); }, 600);
+  };
+  $('btnCast').onclick = () => castStream ? stopCast() : startCast();
+  $('btnCastStop').onclick = stopCast;
+  $('btnLink').onclick = () => { $('linkOverlay').classList.remove('hidden'); $('linkUrl').focus(); };
+  $('linkCancel').onclick = () => $('linkOverlay').classList.add('hidden');
+  $('linkSend').onclick = () => {
+    let url = $('linkUrl').value.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    broadcast({ t: 'link', url, note: $('linkNote').value.trim() });
+    $('linkOverlay').classList.add('hidden');
+    $('linkUrl').value = ''; $('linkNote').value = '';
+  };
+  $('btnMenu').onclick = e => { e.stopPropagation(); $('menu').classList.toggle('hidden'); };
+  document.addEventListener('click', e => { if (!$('menu').contains(e.target)) $('menu').classList.add('hidden'); });
+  $('btnCopyUrl').onclick = () => { navigator.clipboard && navigator.clipboard.writeText(studentLink()); $('btnCopyUrl').textContent = '복사했어요'; setTimeout(() => $('btnCopyUrl').textContent = '학생 주소 복사', 1500); };
+  $('btnNewCode').onclick = () => {
+    if (!confirm('새 코드를 받을까요? 지금 접속한 학생들은 연결이 끊어져요.')) return;
+    broadcast({ t: 'end' });
+    for (const id of [...students.keys()]) removeStudent(id);
+    HB.store.set('hb_code', makeCode());
+    startPeer();
+    $('menu').classList.add('hidden');
+  };
+  window.addEventListener('beforeunload', e => { if (students.size) { e.preventDefault(); e.returnValue = ''; } });
+
+  $('code').textContent = getCode();
+  render();
+  // 테스트용 노출
+  window.__hbTeacher = { students, get view() { return view; } };
+})();
+</script>
+</body>
+</html>

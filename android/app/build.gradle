@@ -1,0 +1,42 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'kr.hatban.screenshare'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'kr.hatban.screenshare'
+        minSdk 26
+        targetSdk 34
+        versionCode (System.getenv('VERSION_CODE') ? System.getenv('VERSION_CODE').toInteger() : 1)
+        versionName '1.0.' + (System.getenv('VERSION_CODE') ?: '0')
+        buildConfigField 'String', 'BASE_URL', '"https://tjungrae-cpu.github.io/class-screenshare/"'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KEYSTORE_FILE') ?: '../hatban.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD') ?: 'hatban-share'
+            keyAlias 'hatban'
+            keyPassword System.getenv('KEYSTORE_PASSWORD') ?: 'hatban-share'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
