@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>햇반 그림퀴즈</title>
+<meta name="theme-color" content="#ff8a3d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script>
+  // ?room=1234 로 들어오면 바로 학생 화면으로
+  (function () {
+    var q = new URLSearchParams(location.search);
+    if (q.get('room')) location.replace('student.html' + location.search);
+  })();
+</script>
+</head>
+<body class="landing">
+  <div class="land">
+    <img class="logo" src="icon.svg" alt="">
+    <h1>햇반 그림퀴즈</h1>
+    <p class="sub">우리 반끼리 하는 그림 맞히기</p>
+    <div class="land-btns">
+      <a class="land-btn student" href="student.html"><span>✏️</span><b>학생 입장</b><small>태블릿에서 눌러요</small></a>
+      <a class="land-btn teacher" href="teacher.html"><span>📺</span><b>선생님 화면</b><small>TV에 띄울 컴퓨터에서 열어요</small></a>
+    </div>
+    <p class="land-note">선생님 화면이 켜져 있어야 학생이 들어올 수 있어요.<br>설치 없이 크롬·삼성 인터넷에서 바로 돼요.</p>
+  </div>
+<script>
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+</script>
+</body>
+</html>

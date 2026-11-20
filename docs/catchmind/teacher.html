@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>햇반 그림퀴즈 · 선생님 화면</title>
+<meta name="theme-color" content="#ff8a3d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="teacher">
+<header class="topbar">
+  <div class="brand"><img src="icon.svg" alt=""><span>햇반 그림퀴즈</span></div>
+  <button class="roomchip" id="btnJoin" title="학생 입장 안내 (QR)">
+    <span class="rc-label">방 번호</span><b id="roomCode">----</b><span class="rc-qr">QR</span>
+  </button>
+  <span class="net" id="netPill"><i></i><span>연결 준비 중</span></span>
+  <div class="spacer"></div>
+  <button class="tbtn" id="btnRank">🏆 순위</button>
+  <button class="tbtn" id="btnSettings">⚙️ 설정</button>
+  <button class="tbtn" id="btnFull" title="전체 화면">⛶</button>
+</header>
+
+<main class="t-main">
+  <section class="stage">
+    <div class="stage-info">
+      <div class="si-left">
+        <span class="badge" id="siRound">준비</span>
+        <span class="si-drawer" id="siDrawer"></span>
+      </div>
+      <div class="si-hint" id="siHint"></div>
+      <div class="si-timer" id="siTimer"><span>--</span></div>
+    </div>
+    <div class="board-wrap" id="boardWrap">
+      <canvas id="board"></canvas>
+      <div class="overlay" id="lobbyOv" hidden></div>
+      <div class="overlay result-ov" id="resultOv" hidden></div>
+      <div class="overlay pause-ov" id="pauseOv" hidden><div class="pause-card">⏸ 잠깐 멈춤</div></div>
+      <div class="drawer-off" id="drawerOff" hidden>📡 출제자 연결이 잠깐 끊겼어요 — 다시 연결되면 이어서 그려요</div>
+      <div class="flash" id="flash" hidden></div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="card ctl">
+      <!-- 다음 문제 준비 -->
+      <div id="ctlSetup">
+        <div class="card-title">다음 문제 <span class="auto-pill" id="autoPill" hidden>자동 진행</span></div>
+        <div class="fld" id="fldWord">
+          <div class="fld-l">제시어 <small>비워 두면 자동으로 골라요</small></div>
+          <div class="row">
+            <input id="inWord" class="masked" maxlength="40" placeholder="예) 고양이" autocomplete="off" spellcheck="false">
+            <button class="btn sq" id="btnPeek" title="제시어 보기/가리기">👁</button>
+            <button class="btn sq" id="btnRandWord" title="주제에서 무작위로">🎲</button>
+          </div>
+        </div>
+        <p class="note" id="noteDrawerPick" hidden>🎨 출제자가 태블릿에서 3개 중 하나를 골라요.</p>
+        <div class="fld">
+          <div class="fld-l">출제자</div>
+          <div class="row">
+            <select id="selDrawer"></select>
+            <button class="btn sq" id="btnRandDrawer" title="안 그린 학생 중에서 뽑기">🎲</button>
+          </div>
+        </div>
+        <div class="fld">
+          <div class="fld-l">제한 시간</div>
+          <div class="seg" id="segTime">
+            <button data-t="30">30초</button><button data-t="60">1분</button><button data-t="90">1분 30초</button><button data-t="120">2분</button>
+          </div>
+        </div>
+        <button class="btn primary big" id="btnStart">▶ 라운드 시작</button>
+        <div class="auto-count" id="autoCount" hidden></div>
+      </div>
+      <!-- 진행 중 -->
+      <div id="ctlLive" hidden>
+        <div class="card-title" id="lvTitle">진행 중</div>
+        <div class="lv-count" id="lvCount">제출 0 / 0명</div>
+        <div class="progress"><div class="bar" id="lvBar"></div></div>
+        <div class="row gap">
+          <button class="btn" id="btnPause">⏸️ 멈춤</button>
+          <button class="btn" id="btnAdd">⏱️ +30초</button>
+        </div>
+        <button class="btn danger big mt" id="btnClose">🔔 마감하고 채점</button>
+        <button class="btn ghost peek" id="btnPeekLive">👁 제시어 보기 (누르고 있는 동안)</button>
+        <button class="btn link" id="btnCancel">이번 문제 취소하기</button>
+      </div>
+    </div>
+
+    <div class="card players-card">
+      <div class="card-title">학생 <span class="pcount" id="pCount">0명</span><span class="legend"><i class="dot on"></i>접속 <i class="dot off"></i>끊김</span></div>
+      <div class="players" id="players"></div>
+    </div>
+  </aside>
+</main>
+
+<!-- 학생 입장 안내 -->
+<div class="modal" id="mJoin" hidden>
+  <div class="modal-card join-card">
+    <button class="x" data-close>✕</button>
+    <div class="join-grid">
+      <div class="qr" id="qrBig"></div>
+      <div class="join-info">
+        <h2>태블릿으로 들어와요</h2>
+        <ol>
+          <li>카메라로 QR을 찍거나 아래 주소를 열어요.</li>
+          <li>방 번호 <b class="big-code" id="joinCode">----</b></li>
+          <li>이름을 넣고 <b>입장하기</b>!</li>
+        </ol>
+        <div class="url-box"><code id="joinUrl"></code><button class="btn sm" id="btnCopy">복사</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 설정 -->
+<div class="modal" id="mSettings" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head"><h2>⚙️ 설정</h2><button class="x" data-close>✕</button></div>
+    <div class="modal-body settings">
+      <section>
+        <h3>게임 규칙</h3>
+        <div class="opt"><div class="opt-l">정답 방식</div>
+          <div class="seg" data-key="answerMode"><button data-v="secret">비밀 제출<small>마감 뒤 한꺼번에 공개</small></button><button data-v="instant">바로 확인<small>맞히면 바로 알려 줌</small></button></div></div>
+        <div class="opt"><div class="opt-l">점수 규칙</div>
+          <div class="seg" data-key="scoring"><button data-v="third">1/3 규칙</button><button data-v="speed">빠르기 점수</button></div>
+          <p class="help" id="scoringHelp"></p></div>
+        <div class="opt"><div class="opt-l">힌트</div>
+          <div class="seg" data-key="hint"><button data-v="none">없음</button><button data-v="length">글자 수</button><button data-v="chosung">글자 수 + 초성</button></div>
+          <p class="help">초성은 시간이 절반 지나면 보여요.</p></div>
+        <div class="opt"><div class="opt-l">제시어 정하기</div>
+          <div class="seg" data-key="wordMode"><button data-v="teacher">선생님이 정함</button><button data-v="drawer">출제자가 3개 중 고름</button></div></div>
+        <div class="opt"><div class="opt-l">자동 진행</div>
+          <div class="seg" data-key="auto"><button data-v="false">끄기</button><button data-v="true">켜기</button></div>
+          <p class="help">결과를 10초 보여 준 뒤, 아직 안 그린 학생과 무작위 제시어로 다음 라운드를 바로 시작해요.</p></div>
+        <div class="opt"><div class="opt-l">소리 (TV)</div>
+          <div class="seg" data-key="sound"><button data-v="true">켜기</button><button data-v="false">끄기</button></div></div>
+      </section>
+      <section>
+        <h3>제시어 주제</h3>
+        <div class="cats" id="catBox"></div>
+        <div class="fld"><div class="fld-l">우리 반 낱말 <small>쉼표로 구분</small></div>
+          <textarea id="taCustom" rows="2"></textarea></div>
+        <h3>학생 명단 <small>(선택)</small></h3>
+        <textarea id="taRoster" rows="4" placeholder="한 줄에 한 명씩 (번호가 붙어 있어도 괜찮아요)&#10;예)&#10;1 홍길동&#10;2 김햇반"></textarea>
+        <p class="help">명단을 넣으면 학생은 이름을 눌러서 들어오고, 명단에 없는 이름은 들어올 수 없어요. 명단은 이 컴퓨터에만 저장돼요.</p>
+        <div class="opt"><div class="opt-l">새 학생 입장</div>
+          <div class="seg" data-key="lock"><button data-v="false">열기</button><button data-v="true">잠그기</button></div>
+          <p class="help">잠가도 이미 들어온 학생은 끊겼다가 다시 들어올 수 있어요.</p></div>
+      </section>
+      <section class="full">
+        <h3>관리</h3>
+        <div class="row wrap gap">
+          <button class="btn" id="btnBots">🤖 연습용 봇 3명 넣기</button>
+          <button class="btn" id="btnBotsOff">봇 모두 빼기</button>
+          <button class="btn" id="btnCsv">📄 결과 저장 (CSV)</button>
+          <button class="btn warn" id="btnResetScore">점수 초기화</button>
+          <button class="btn danger" id="btnNewRoom">새 방 만들기</button>
+        </div>
+        <p class="help">혼자 미리 해 볼 때는 봇을 넣어 보세요. 봇이 그리고 답도 내요.</p>
+        <p class="ver" id="verInfo"></p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<!-- 순위 -->
+<div class="modal" id="mRank" hidden>
+  <div class="modal-card wide">
+    <div class="modal-head"><h2>🏆 지금 순위</h2><button class="x" data-close>✕</button></div>
+    <div class="modal-body">
+      <div class="podium" id="podium"></div>
+      <ol class="ranklist" id="rankList"></ol>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 관리 -->
+<div class="modal" id="mPlayer" hidden>
+  <div class="modal-card narrow">
+    <div class="modal-head"><h2 id="mpName">학생</h2><button class="x" data-close>✕</button></div>
+    <div class="modal-body">
+      <p class="mp-info" id="mpInfo"></p>
+      <div class="row wrap gap">
+        <button class="btn" data-act="drawer">🎨 다음 출제자로</button>
+        <button class="btn" data-act="plus">+5점</button>
+        <button class="btn" data-act="minus">−5점</button>
+      </div>
+      <div class="row wrap gap mt">
+        <button class="btn" data-act="release">🔓 다른 기기로 들어오게 허용</button>
+        <button class="btn danger" data-act="kick">내보내기</button>
+      </div>
+      <p class="help">학생이 태블릿을 바꿨거나 저장된 정보가 지워져 같은 이름으로 못 들어올 때 ‘다른 기기로 들어오게 허용’을 눌러 주세요. 점수는 그대로예요.</p>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/peerjs.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="words.js"></script>
+<script src="common.js"></script>
+<script src="teacher.js"></script>
+</body>
+</html>

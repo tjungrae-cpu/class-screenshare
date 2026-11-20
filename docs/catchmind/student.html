@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
+<title>햇반 그림퀴즈</title>
+<meta name="theme-color" content="#ff8a3d">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="student">
+<header class="s-top">
+  <div class="s-me"><img src="icon.svg" alt=""><span id="meName">햇반 그림퀴즈</span><b id="meScore" hidden></b></div>
+  <div class="s-timer" id="sTimer" hidden><span>0:00</span></div>
+  <button class="snd" id="btnSnd" title="소리 켜기/끄기">🔊</button>
+  <span class="net" id="netPill"><i></i><span>연결 중…</span></span>
+</header>
+<div class="s-banner" id="offBanner" hidden>📡 연결이 잠깐 끊겼어요. 자동으로 다시 연결하는 중… <small>(그림·답은 계속 써도 돼요)</small></div>
+
+<main class="s-main">
+  <!-- 방 번호 -->
+  <section class="scr" id="scrConnect">
+    <div class="center-card">
+      <img class="logo" src="icon.svg" alt="">
+      <h1>햇반 그림퀴즈</h1>
+      <form id="roomForm" class="room-form" autocomplete="off">
+        <label for="inRoom">방 번호</label>
+        <input id="inRoom" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="0000">
+        <button class="btn primary big" type="submit">입장하기</button>
+      </form>
+      <p class="status" id="connStatus"></p>
+    </div>
+  </section>
+
+  <!-- 이름 -->
+  <section class="scr" id="scrName">
+    <div class="center-card wide">
+      <h2 id="nameTitle">내 이름을 알려 주세요</h2>
+      <div class="roster" id="rosterGrid" hidden></div>
+      <form id="nameForm" class="name-form" autocomplete="off">
+        <input id="inName" maxlength="12" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="이름">
+        <button class="btn primary big" type="submit">입장하기</button>
+      </form>
+      <p class="err" id="nameErr"></p>
+      <button class="btn link" id="btnChangeRoom" type="button">다른 방 번호 넣기</button>
+    </div>
+  </section>
+
+  <!-- 기다리기 -->
+  <section class="scr" id="scrWait">
+    <div class="center-card">
+      <div class="wait-emoji" id="waitEmoji">🍚</div>
+      <h2 id="waitTitle">선생님이 문제를 준비하고 있어요</h2>
+      <p class="wait-sub" id="waitSub"></p>
+      <div class="my-score" id="myScore"></div>
+      <ol class="mini-rank" id="miniRank"></ol>
+    </div>
+  </section>
+
+  <!-- 출제자: 단어 고르기 -->
+  <section class="scr" id="scrPick">
+    <div class="center-card wide">
+      <div class="wait-emoji">🎨</div>
+      <h2>내가 그릴 차례예요!</h2>
+      <p>그릴 단어를 하나 골라요. 친구들에게는 비밀!</p>
+      <div class="choices" id="choices"></div>
+      <p class="pick-time" id="pickTime"></p>
+    </div>
+  </section>
+
+  <!-- 그리기 / 맞히기 -->
+  <section class="scr" id="scrPlay">
+    <div class="play-head" id="playHead"></div>
+    <div class="board-wrap" id="boardWrap">
+      <canvas id="board"></canvas>
+      <div class="overlay pause-ov" id="pausedOv" hidden><div class="pause-card">⏸ 잠깐 멈춤</div></div>
+      <div class="overlay s-result" id="resultOv" hidden></div>
+      <div class="fb" id="fb" hidden></div>
+    </div>
+    <div class="tools" id="tools" hidden>
+      <div class="colors" id="colors"></div>
+      <div class="sizes" id="sizes"></div>
+      <div class="tool-btns">
+        <button class="tbtn2" id="tEraser" type="button">🧽 지우개</button>
+        <button class="tbtn2" id="tUndo" type="button">↩ 되돌리기</button>
+        <button class="tbtn2 danger" id="tClear" type="button">🗑 모두 지우기</button>
+      </div>
+    </div>
+    <form class="answer" id="ansForm" hidden autocomplete="off">
+      <input id="ansInput" maxlength="30" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" placeholder="정답을 써요">
+      <button class="btn primary" type="submit" id="ansBtn">제출</button>
+      <div class="ans-status" id="ansStatus"></div>
+    </form>
+  </section>
+
+  <!-- 안내 -->
+  <section class="scr" id="scrMsg">
+    <div class="center-card">
+      <div class="wait-emoji">🙏</div>
+      <h2 id="msgTitle"></h2>
+      <p id="msgSub"></p>
+      <button class="btn primary" id="btnMsgAction" type="button" hidden>새로고침</button>
+    </div>
+  </section>
+</main>
+
+<script src="vendor/peerjs.min.js"></script>
+<script src="common.js"></script>
+<script src="student.js"></script>
+</body>
+</html>
